@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routes import appointments, auth, users
+from app.api.routes import appointments, auth, providers, users
 from app.core.config import get_settings
 from app.db.database import Base, check_database_connection, engine
 from app.db.models import entities  # noqa: F401
@@ -24,6 +24,7 @@ app = FastAPI(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(appointments.router)
+app.include_router(providers.router)
 
 
 @app.get("/health", tags=["health"])

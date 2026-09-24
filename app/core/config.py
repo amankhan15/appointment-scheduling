@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="development-only-change-me", validation_alias="JWT_SECRET")
     jwt_algorithm: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
     access_token_expire_minutes: int = Field(default=30, validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    appointment_duration_minutes: int = Field(default=30, validation_alias="APPOINTMENT_DURATION_MINUTES")
     applicationinsights_connection_string: str | None = Field(
         default=None, validation_alias="APPLICATIONINSIGHTS_CONNECTION_STRING"
     )

@@ -4,7 +4,7 @@ A student-scale FastAPI appointment scheduling system designed to demonstrate se
 
 ## Current implementation stage
 
-Phase 1 establishes the runnable backend foundation:
+The current implementation provides the runnable backend foundation and provider availability slice:
 
 - FastAPI application with OpenAPI documentation
 - Environment-based configuration
@@ -15,9 +15,12 @@ Phase 1 establishes the runnable backend foundation:
 - Database-level filtered unique index for active provider/time slots
 - Docker image and local Compose configuration
 - `/health` and `/ready` endpoints
-- Initial API tests
+- Provider listing and details
+- Provider-owned schedules and blocked periods
+- Availability endpoint backed by slot generation
+- API and unit tests
 
-Feature modules will be added incrementally after this foundation remains green.
+Further feature modules will be added incrementally after this foundation remains green.
 
 ## Implementation plan
 
