@@ -77,6 +77,22 @@ uvicorn app.main:app --reload
 
 Open the interactive API documentation at `http://127.0.0.1:8000/docs`.
 
+## Frontend
+
+The React/Vite customer interface lives in `frontend/`. Start it separately
+from the API:
+
+```powershell
+Set-Location frontend
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173/`. Vite proxies authentication, provider,
+availability, and appointment requests to the local FastAPI server on port
+8000. The current UI supports registration, login, provider selection,
+availability browsing, booking, appointment listing, and cancellation.
+
 ## Tests and checks
 
 ```powershell
