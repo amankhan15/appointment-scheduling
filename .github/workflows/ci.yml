@@ -30,6 +30,14 @@ jobs:
       - name: Run Ruff
         run: ruff check app tests
 
+      - name: Run Bandit
+        run: |
+          python -m pip install bandit==1.8.3
+          bandit -r app -ll
+
+      - name: Audit Python dependencies
+        run: pip-audit -r requirements.txt
+
       - name: Apply database migrations
         run: alembic upgrade head
 
@@ -38,6 +46,16 @@ jobs:
 
       - name: Build Docker image
         run: docker build --tag appointment-api:ci .
+
+      - name: Scan Docker image
+        run: |
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.59.1 image \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --severity CRITICAL,HIGH \
+            appointment-api:ci
 
       - name: Run container smoke test
         shell: bash

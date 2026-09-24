@@ -153,7 +153,8 @@ Terraform and GitHub Actions deployment workflows will be added after the applic
 - Azure secrets belong in Key Vault.
 - Backend authorization will be enforced for every protected route.
 - ORM operations are used instead of string-built SQL.
-- CI will include dependency, static, secret, and container scanning.
+- CI includes dependency auditing with `pip-audit`, Python static analysis with
+    Bandit, and CRITICAL/HIGH container scanning with Trivy.
 
 ## Known limitations at this stage
 
