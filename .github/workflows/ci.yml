@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-container-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run Ruff
+        run: ruff check app tests
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Build Docker image
+        run: docker build --tag appointment-api:ci .
+
+      - name: Run container smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach \
+            --name appointment-api-ci \
+            --publish 8000:8000 \
+            --env APP_ENV=development \
+            --env DATABASE_URL=sqlite:///./data/appointment.db \
+            --env JWT_SECRET=ci-only-test-secret \
+            appointment-api:ci
+
+          cleanup() {
+            docker rm --force appointment-api-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/health >/dev/null; then
+              curl --fail --silent http://127.0.0.1:8000/ready >/dev/null
+              exit 0
+            fi
+            sleep 2
+          done
+
+          docker logs appointment-api-ci
+          exit 1
