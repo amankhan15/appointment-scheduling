@@ -88,10 +88,12 @@ function App() {
   }
   async function book(slot: Slot) {
     if (!selectedProvider) return
+    if (!window.confirm(`Book ${formatSlot(slot.start_datetime)} with ${selectedProvider.name}?`)) return
     try { await request('/appointments', { method: 'POST', body: JSON.stringify({ provider_id: selectedProvider.id, start_datetime: slot.start_datetime, end_datetime: slot.end_datetime }) }); setMessage('Appointment confirmed.'); setSlots(slots.filter((item) => item.start_datetime !== slot.start_datetime)); setAppointments(await request<Appointment[]>('/appointments')) }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Booking failed') }
   }
   async function cancel(id: number) {
+    if (!window.confirm('Cancel this appointment?')) return
     try { await request(`/appointments/${id}/cancel`, { method: 'POST' }); setAppointments(await request<Appointment[]>('/appointments')); setMessage('Appointment cancelled.') }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Cancellation failed') }
   }
