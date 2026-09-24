@@ -10,6 +10,7 @@ export default defineConfig({
       '/users': 'http://127.0.0.1:8000',
       '/providers': 'http://127.0.0.1:8000',
       '/appointments': 'http://127.0.0.1:8000',
+      '/admin': 'http://127.0.0.1:8000',
     },
   },
 })
