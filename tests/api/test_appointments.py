@@ -1,9 +1,10 @@
+from datetime import datetime
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
 from app.db.database import SessionLocal
-from app.db.models import ProviderProfile, User, UserRole
+from app.db.models import Appointment, ProviderProfile, User, UserRole
 from app.main import app
 from app.core.security import hash_password
 
@@ -36,10 +37,11 @@ def test_active_slot_cannot_be_booked_twice_and_can_be_rebooked_after_cancel() -
     )
     token = registration.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
+    slot_date = datetime(2100 + (uuid4().int % 800), 1 + (uuid4().int % 12), 1 + (uuid4().int % 20), 10)
     payload = {
         "provider_id": provider_id,
-        "start_datetime": "2030-02-04T10:00:00",
-        "end_datetime": "2030-02-04T10:30:00",
+        "start_datetime": slot_date.isoformat(),
+        "end_datetime": (slot_date.replace(minute=30)).isoformat(),
     }
 
     first = client.post("/appointments", json=payload, headers=headers)
@@ -56,6 +58,12 @@ def test_active_slot_cannot_be_booked_twice_and_can_be_rebooked_after_cancel() -
     assert replacement.status_code == 201
 
     cleanup = SessionLocal()
+    cleanup.query(Appointment).where(Appointment.provider_id == provider_id).delete(
+        synchronize_session=False
+    )
+    cleanup.query(ProviderProfile).where(ProviderProfile.id == provider_id).delete(
+        synchronize_session=False
+    )
     cleanup.query(User).filter(User.email.in_([provider_email, customer_email])).delete(
         synchronize_session=False
     )

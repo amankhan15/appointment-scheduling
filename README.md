@@ -19,6 +19,7 @@ The current implementation provides the runnable backend foundation and provider
 - Provider-owned schedules and blocked periods
 - Availability endpoint backed by slot generation
 - Concurrent booking tests for 10, 25, and 50 requests
+- Audit records for authentication, appointments, schedules, and blocked periods
 - API and unit tests
 
 Further feature modules will be added incrementally after this foundation remains green.
@@ -117,6 +118,15 @@ Azure SQL uses a SQLAlchemy `mssql+pyodbc` URL. The Azure deployment must provid
 Booking will use a transaction plus a database-enforced unique filtered index on provider and start time for non-cancelled appointments. The database remains the final authority when simultaneous requests compete for the same slot. The API will translate a uniqueness conflict into HTTP 409 rather than allowing duplicate active appointments.
 
 The local concurrency tests send 10, 25, and 50 simultaneous requests for the same slot, inspect persisted rows after completion, and verify one successful booking, controlled conflicts, and zero duplicate active appointments. The final SQL Server/Azure SQL evaluation should repeat these scenarios against the target relational database and record response-time measurements.
+
+## Audit logging
+
+Important operations write an `AuditRecord` in the same database transaction as
+the operation: registration, successful login, booking, cancellation,
+rescheduling, schedule changes, and blocked-period changes. Failed transactions
+are rolled back together, so a rejected booking does not create a success audit
+event. Audit details contain operation metadata only and never passwords or
+secret values.
 
 ## Azure and DevOps design
 

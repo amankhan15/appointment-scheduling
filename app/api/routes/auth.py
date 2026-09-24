@@ -5,6 +5,7 @@ from app.api.dependencies import DbSession
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.models import User, UserRole
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.services.audit_service import record_audit
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -22,8 +23,12 @@ def register(request: RegisterRequest, db: DbSession) -> TokenResponse:
         role=UserRole.CUSTOMER,
     )
     db.add(user)
+    db.flush()
+    record_audit(db, action="USER_REGISTERED", user_id=user.id)
     db.commit()
     db.refresh(user)
+    record_audit(db, action="LOGIN_SUCCEEDED", user_id=user.id)
+    db.commit()
     return TokenResponse(access_token=create_access_token(user), user=user)
 
 

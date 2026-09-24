@@ -42,10 +42,11 @@ def test_concurrent_booking_creates_one_active_appointment(request_count: int) -
     db.close()
 
     token = _create_token(customer_id)
+    slot_date = datetime(2100 + (uuid4().int % 800), 1 + (uuid4().int % 12), 1 + (uuid4().int % 20), 10)
     payload = {
         "provider_id": provider_id,
-        "start_datetime": datetime(2035, request_count % 12 + 1, 1, 10).isoformat(),
-        "end_datetime": datetime(2035, request_count % 12 + 1, 1, 10, 30).isoformat(),
+        "start_datetime": slot_date.isoformat(),
+        "end_datetime": slot_date.replace(minute=30).isoformat(),
     }
 
     def book() -> int:

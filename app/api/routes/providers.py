@@ -18,6 +18,7 @@ from app.schemas.providers import (
     SlotResponse,
 )
 from app.services.slot_service import generate_available_slots
+from app.services.audit_service import record_audit
 
 router = APIRouter(prefix="/providers", tags=["providers"])
 CurrentUser = Annotated[User, Depends(get_current_user)]
@@ -63,6 +64,8 @@ def create_schedule(
     _require_provider_owner(profile, current_user)
     schedule = ProviderSchedule(provider_id=provider_id, **request.model_dump())
     db.add(schedule)
+    db.flush()
+    record_audit(db, action="SCHEDULE_CREATED", user_id=current_user.id, details={"schedule_id": schedule.id})
     try:
         db.commit()
     except IntegrityError as exc:
@@ -94,6 +97,7 @@ def update_schedule(
     _require_provider_owner(_get_provider(db, schedule.provider_id), current_user)
     for key, value in request.model_dump().items():
         setattr(schedule, key, value)
+    record_audit(db, action="SCHEDULE_UPDATED", user_id=current_user.id, details={"schedule_id": schedule.id})
     try:
         db.commit()
     except IntegrityError as exc:
@@ -110,6 +114,7 @@ def delete_schedule(schedule_id: int, db: DbSession, current_user: CurrentUser) 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
     _require_provider_owner(_get_provider(db, schedule.provider_id), current_user)
     db.delete(schedule)
+    record_audit(db, action="SCHEDULE_DELETED", user_id=current_user.id, details={"schedule_id": schedule_id})
     db.commit()
 
 
@@ -128,6 +133,13 @@ def create_blocked_period(
     _require_provider_owner(profile, current_user)
     blocked_period = BlockedPeriod(provider_id=provider_id, **request.model_dump())
     db.add(blocked_period)
+    db.flush()
+    record_audit(
+        db,
+        action="BLOCKED_PERIOD_CREATED",
+        user_id=current_user.id,
+        details={"blocked_period_id": blocked_period.id},
+    )
     db.commit()
     db.refresh(blocked_period)
     return blocked_period
@@ -153,6 +165,12 @@ def delete_blocked_period(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blocked period not found")
     _require_provider_owner(_get_provider(db, blocked_period.provider_id), current_user)
     db.delete(blocked_period)
+    record_audit(
+        db,
+        action="BLOCKED_PERIOD_DELETED",
+        user_id=current_user.id,
+        details={"blocked_period_id": blocked_period_id},
+    )
     db.commit()
 
 

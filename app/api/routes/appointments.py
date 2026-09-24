@@ -6,6 +6,7 @@ from app.api.dependencies import DbSession
 from app.api.dependencies import get_current_user
 from app.db.models import Appointment, AppointmentStatus, ProviderProfile, User
 from app.schemas.appointments import AppointmentCreate, AppointmentResponse, AppointmentReschedule
+from app.services.audit_service import record_audit
 from fastapi import Depends
 from typing import Annotated
 
@@ -34,6 +35,8 @@ def create_appointment(request: AppointmentCreate, db: DbSession, current_user: 
     )
     db.add(appointment)
     try:
+        db.flush()
+        record_audit(db, action="APPOINTMENT_BOOKED", user_id=current_user.id, appointment_id=appointment.id)
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -69,6 +72,7 @@ def cancel_appointment(
     if appointment.status != AppointmentStatus.CONFIRMED:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Appointment cannot be cancelled")
     appointment.status = AppointmentStatus.CANCELLED
+    record_audit(db, action="APPOINTMENT_CANCELLED", user_id=current_user.id, appointment_id=appointment.id)
     db.commit()
     db.refresh(appointment)
     return appointment
@@ -90,6 +94,7 @@ def reschedule_appointment(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Appointment cannot be rescheduled")
     appointment.start_datetime = request.start_datetime
     appointment.end_datetime = request.end_datetime
+    record_audit(db, action="APPOINTMENT_RESCHEDULED", user_id=current_user.id, appointment_id=appointment.id)
     try:
         db.commit()
     except IntegrityError as exc:
