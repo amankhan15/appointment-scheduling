@@ -3,7 +3,7 @@ from sqlalchemy import select
 
 from app.api.dependencies import DbSession
 from app.core.security import create_access_token, hash_password, verify_password
-from app.db.models import User, UserRole
+from app.db.models import CustomerProfile, User, UserRole
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.services.audit_service import record_audit
 
@@ -24,6 +24,8 @@ def register(request: RegisterRequest, db: DbSession) -> TokenResponse:
     )
     db.add(user)
     db.flush()
+    if db.scalar(select(CustomerProfile).where(CustomerProfile.user_id == user.id)) is None:
+        db.add(CustomerProfile(user_id=user.id))
     record_audit(db, action="USER_REGISTERED", user_id=user.id)
     db.commit()
     db.refresh(user)

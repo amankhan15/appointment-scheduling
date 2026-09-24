@@ -39,6 +39,20 @@ class User(TimestampMixin, Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     provider_profile: Mapped["ProviderProfile | None"] = relationship(back_populates="user")
+    customer_profile: Mapped["CustomerProfile | None"] = relationship(back_populates="user")
+
+
+class CustomerProfile(Base):
+    __tablename__ = "customer_profiles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False)
+    gender: Mapped[str | None] = mapped_column(String(40))
+    age: Mapped[int | None] = mapped_column(Integer)
+    weight_kg: Mapped[float | None] = mapped_column()
+    medical_notes: Mapped[str | None] = mapped_column(Text)
+
+    user: Mapped[User] = relationship(back_populates="customer_profile")
 
 
 class ProviderProfile(Base):
@@ -107,6 +121,7 @@ class Appointment(TimestampMixin, Base):
     )
     cancellation_reason: Mapped[str | None] = mapped_column(String(255))
     notes: Mapped[str | None] = mapped_column(Text)
+    concern: Mapped[str | None] = mapped_column(Text)
 
     provider: Mapped[ProviderProfile] = relationship(back_populates="appointments")
 

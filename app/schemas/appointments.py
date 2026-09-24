@@ -10,6 +10,7 @@ class AppointmentCreate(BaseModel):
     start_datetime: datetime
     end_datetime: datetime
     notes: str | None = Field(default=None, max_length=1000)
+    concern: str | None = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
     def validate_range(self) -> "AppointmentCreate":
@@ -37,3 +38,4 @@ class AppointmentResponse(BaseModel):
     end_datetime: datetime
     status: AppointmentStatus
     notes: str | None
+    concern: str | None
