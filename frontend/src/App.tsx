@@ -6,6 +6,8 @@ type User = { id: number; name: string; email: string; role: string }
 type Provider = { id: number; name: string; specialization?: string; description?: string }
 type Slot = { start_datetime: string; end_datetime: string }
 type Appointment = { id: number; provider_id: number; start_datetime: string; end_datetime: string; status: string }
+type Schedule = { id: number; provider_id: number; day_of_week: number; start_time: string; end_time: string; active: boolean }
+type BlockedPeriod = { id: number; provider_id: number; start_datetime: string; end_datetime: string; reason?: string }
 
 const jsonHeaders = { 'Content-Type': 'application/json' }
 
@@ -36,6 +38,12 @@ function App() {
   const [isRegistering, setIsRegistering] = useState(false)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [myProvider, setMyProvider] = useState<Provider | null>(null)
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [, setBlockedPeriods] = useState<BlockedPeriod[]>([])
+  const [scheduleDay, setScheduleDay] = useState('0')
+  const [scheduleStart, setScheduleStart] = useState('09:00')
+  const [scheduleEnd, setScheduleEnd] = useState('17:00')
 
   useEffect(() => {
     const saved = sessionStorage.getItem('appointment_user')
@@ -43,6 +51,15 @@ function App() {
     request<Provider[]>('/providers').then(setProviders).catch(() => setMessage('Start FastAPI on port 8000 to load providers.'))
   }, [])
   useEffect(() => { if (user) request<Appointment[]>('/appointments').then(setAppointments).catch(() => undefined) }, [user])
+  useEffect(() => {
+    if (user?.role === 'PROVIDER') {
+      request<Provider>('/providers/me').then(async (profile) => {
+        setMyProvider(profile)
+        setSchedules(await request<Schedule[]>(`/providers/${profile.id}/schedules`))
+        setBlockedPeriods(await request<BlockedPeriod[]>(`/providers/${profile.id}/blocked-periods`))
+      }).catch((error) => setMessage(error instanceof Error ? error.message : 'Provider profile unavailable'))
+    }
+  }, [user])
 
   async function authenticate(event: FormEvent) {
     event.preventDefault(); setLoading(true); setMessage('')
@@ -69,6 +86,20 @@ function App() {
     catch (error) { setMessage(error instanceof Error ? error.message : 'Cancellation failed') }
   }
   function logout() { sessionStorage.clear(); setUser(null); setAppointments([]) }
+
+  async function addSchedule(event: FormEvent) {
+    event.preventDefault(); if (!myProvider) return
+    try {
+      const schedule = await request<Schedule>(`/providers/${myProvider.id}/schedules`, { method: 'POST', body: JSON.stringify({ day_of_week: Number(scheduleDay), start_time: `${scheduleStart}:00`, end_time: `${scheduleEnd}:00`, active: true }) })
+      setSchedules([...schedules, schedule]); setMessage('Schedule added.')
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Schedule update failed') }
+  }
+  async function removeSchedule(id: number) {
+    try { await request(`/providers/schedules/${id}`, { method: 'DELETE' }); setSchedules(schedules.filter((schedule) => schedule.id !== id)); setMessage('Schedule removed.') }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Schedule removal failed') }
+  }
+
+  if (user?.role === 'PROVIDER' && myProvider) return <div className="app-shell"><aside className="sidebar"><div className="brand-mark">A<span>/</span>S</div><div className="side-title">Your practice,<br /><strong>in balance.</strong></div><nav><a className="active" href="#provider-overview">Overview</a><a href="#provider-schedule">Schedule</a><a href="#provider-appointments">Appointments</a></nav><div className="side-foot"><div className="avatar">{user.name[0]}</div><div><strong>{user.name}</strong><small>provider</small></div><button onClick={logout} title="Sign out">↗</button></div></aside><main className="dashboard" id="provider-overview"><header><div><p className="eyebrow">Provider workspace</p><h1>Good morning, {myProvider.name.split(' ')[1] || myProvider.name}.</h1></div><div className="status"><i /> Provider mode</div></header>{message && <div className="notice inline">{message}</div>}<section className="metric-row"><div><span>Appointments</span><strong>{appointments.filter((a) => a.status === 'CONFIRMED').length.toString().padStart(2, '0')}</strong></div><div><span>Working rules</span><strong>{schedules.length.toString().padStart(2, '0')}</strong></div><div><span>Specialization</span><strong className="metric-text">{myProvider.specialization || 'General'}</strong></div></section><section className="provider-workspace"><div className="booking-panel" id="provider-schedule"><div className="section-heading"><div><p className="eyebrow">Availability</p><h2>Working schedule</h2></div></div><form className="schedule-form" onSubmit={addSchedule}><select value={scheduleDay} onChange={(e) => setScheduleDay(e.target.value)}><option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option><option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option></select><input type="time" value={scheduleStart} onChange={(e) => setScheduleStart(e.target.value)} /><input type="time" value={scheduleEnd} onChange={(e) => setScheduleEnd(e.target.value)} /><button className="primary" type="submit">Add rule</button></form><div className="schedule-list">{schedules.map((schedule) => <article key={schedule.id}><span>{['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][schedule.day_of_week]}</span><strong>{schedule.start_time.slice(0, 5)} – {schedule.end_time.slice(0, 5)}</strong><button onClick={() => removeSchedule(schedule.id)} title="Remove schedule">×</button></article>)}</div></div><div className="appointments-panel" id="provider-appointments"><div className="section-heading"><div><p className="eyebrow">Your day</p><h2>Appointments</h2></div><span className="count">{appointments.length}</span></div>{appointments.length ? <div className="appointment-list">{appointments.map((appointment) => <article key={appointment.id}><div className="appointment-date"><strong>{new Date(appointment.start_datetime).getDate()}</strong><small>{new Intl.DateTimeFormat('en', { month: 'short' }).format(new Date(appointment.start_datetime))}</small></div><div className="appointment-info"><strong>Customer appointment</strong><span>{formatSlot(appointment.start_datetime)} · {appointment.status.toLowerCase()}</span></div></article>)}</div> : <div className="empty large">No appointments yet.</div>}</div></section></main></div>
 
   if (!user) return <main className="auth-shell"><div className="auth-panel"><div className="brand-mark">A<span>/</span>S</div><p className="eyebrow">Appointment Scheduling</p><h1>Make time for what matters.</h1><p className="lede">A calmer way to find the right provider, choose a time, and keep your day moving.</p><form onSubmit={authenticate} className="auth-form"><h2>{isRegistering ? 'Create your account' : 'Welcome back'}</h2>{isRegistering && <label>Name<input value={name} onChange={(e) => setName(e.target.value)} required /></label>}<label>Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label><label>Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required /></label><button className="primary" disabled={loading}>{loading ? 'Please wait...' : isRegistering ? 'Create account' : 'Sign in'}</button></form><button className="text-button" onClick={() => setIsRegistering(!isRegistering)}>{isRegistering ? 'Already have an account? Sign in' : 'New here? Create an account'}</button>{message && <p className="notice">{message}</p>}</div><div className="auth-art"><div className="art-note">01 <span>Find your rhythm</span></div><div className="art-sun" /><div className="art-copy">Thoughtful scheduling<br /><em>for real life.</em></div></div></main>
 

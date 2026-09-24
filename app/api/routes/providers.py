@@ -48,6 +48,13 @@ def list_providers(db: DbSession) -> list[ProviderProfile]:
     return list(db.scalars(select(ProviderProfile).order_by(ProviderProfile.name)).all())
 
 
+@router.get("/me", response_model=ProviderResponse)
+def get_my_provider_profile(db: DbSession, current_user: CurrentUser) -> ProviderProfile:
+    if current_user.role != UserRole.PROVIDER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Provider access required")
+    return _provider_for_user(db, current_user)
+
+
 @router.get("/{provider_id}", response_model=ProviderResponse)
 def get_provider(provider_id: int, db: DbSession) -> ProviderProfile:
     return _get_provider(db, provider_id)
