@@ -13,6 +13,11 @@ type Confirmation = { text: string; action: () => Promise<void> }
 async function api<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = sessionStorage.getItem('appointment_token')
   const response = await fetch(url, { ...options, headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+  if (response.status === 401) {
+    sessionStorage.clear()
+    window.location.reload()
+    throw new Error('Session expired. Please sign in again.')
+  }
   if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail ?? 'Request failed')
   return response.status === 204 ? (undefined as T) : response.json()
 }
