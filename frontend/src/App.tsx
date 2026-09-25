@@ -19,6 +19,7 @@ async function api<T>(url: string, options: RequestInit = {}): Promise<T> {
 }
 
 const timeLabel = (value: string) => new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' }).format(new Date(value))
+function nextWorkingDay() { const date = new Date(); const day = date.getDay(); if (day === 0) date.setDate(date.getDate() + 1); if (day === 6) date.setDate(date.getDate() + 2); return date.toISOString().slice(0, 10) }
 
 function ConfirmModal({ item, close, confirm }: { item: Confirmation; close: () => void; confirm: () => void }) {
   return <div className="modal-backdrop"><section className="confirm-modal" role="dialog" aria-modal="true"><p className="eyebrow">Please confirm</p><h2>{item.text}</h2><p className="modal-copy">This action will update your appointment record.</p><div className="modal-actions"><button className="secondary" onClick={close}>Keep it</button><button className="primary modal-confirm" onClick={confirm}>Confirm</button></div></section></div>
@@ -31,7 +32,7 @@ function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
   const [slots, setSlots] = useState<Slot[]>([])
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(nextWorkingDay)
   const [concern, setConcern] = useState('')
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const [reschedule, setReschedule] = useState<RescheduleTarget | null>(null)
@@ -50,7 +51,7 @@ function App() {
   }
   function logout() { sessionStorage.clear(); setUser(null); setAppointments([]) }
   async function saveProfile(event: FormEvent) { event.preventDefault(); if (!profile) return; try { setProfile(await api<Profile>('/users/me/profile', { method: 'PUT', body: JSON.stringify({ gender: profile.gender || null, age: profile.age || null, weight_kg: profile.weight_kg || null, medical_notes: profile.medical_notes || null }) })); setMessage('Profile saved.') } catch (error) { setMessage(error instanceof Error ? error.message : 'Profile update failed') } }
-  async function loadSlots(provider: Provider) { setSelectedProvider(provider); try { setSlots((await api<{ slots: Slot[] }>(`/providers/${provider.id}/availability?target_date=${date}`)).slots) } catch (error) { setMessage(error instanceof Error ? error.message : 'Availability unavailable') } }
+  async function loadSlots(provider: Provider) { setSelectedProvider(provider); try { setSlots((await api<{ slots: Slot[] }>(`/providers/${provider.id}/availability?target_date=${date}`)).slots) } catch (error) { setSlots([]); setMessage(error instanceof Error ? error.message : 'Availability unavailable') } }
   function book(slot: Slot) { if (!selectedProvider || !concern.trim()) { setMessage('Enter a concern before booking.'); return }; setConfirmation({ text: `Book ${timeLabel(slot.start_datetime)} with ${selectedProvider.name}?`, action: async () => { await api('/appointments', { method: 'POST', body: JSON.stringify({ provider_id: selectedProvider.id, start_datetime: slot.start_datetime, end_datetime: slot.end_datetime, concern: concern.trim() }) }); setConcern(''); setMessage('Appointment confirmed.'); setSlots(slots.filter((item) => item.start_datetime !== slot.start_datetime)); setAppointments(await api<Appointment[]>('/appointments')) } }) }
   function cancel(appointment: Appointment) { setConfirmation({ text: 'Cancel this appointment?', action: async () => { await api(`/appointments/${appointment.id}/cancel`, { method: 'POST' }); setMessage('Appointment cancelled.'); setAppointments(await api<Appointment[]>('/appointments')) } }) }
   function openReschedule(appointment: Appointment) { setReschedule({ id: appointment.id, date: appointment.start_datetime.slice(0, 10), time: appointment.start_datetime.slice(11, 16) }) }
