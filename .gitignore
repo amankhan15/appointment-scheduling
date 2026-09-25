@@ -10,3 +10,8 @@ htmlcov/
 .mypy_cache/
 .idea/
 .vscode/settings.json
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfvars
+terraform/crash.log

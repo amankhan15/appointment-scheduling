@@ -39,6 +39,10 @@ Further feature modules will be added incrementally after this foundation remain
 
 The implementation deliberately uses a modular monolith. AKS, microservices, message brokers, Redis, and extra Azure networking services are outside scope because they add cost and operational complexity without improving the core evaluation.
 
+The initial Azure Terraform baseline is in `terraform/`. It is validated but not
+applied yet. Review the region, SKUs, container image, and student-credit budget
+before running `terraform apply`.
+
 ## Technology stack
 
 - Python 3.12+
