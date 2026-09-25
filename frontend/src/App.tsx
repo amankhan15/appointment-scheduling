@@ -28,7 +28,7 @@ function App() {
   const [message, setMessage] = useState('')
   const [providers, setProviders] = useState<Provider[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<Profile | null>({ id: 0, user_id: 0, name: '', email: '', gender: '', age: undefined, weight_kg: undefined, medical_notes: '' })
   const [view, setView] = useState(() => window.location.hash.slice(1) || 'overview')
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
 
