@@ -39,3 +39,5 @@ class AppointmentResponse(BaseModel):
     status: AppointmentStatus
     notes: str | None
     concern: str | None
+    payment_status: str
+    payment_amount: float

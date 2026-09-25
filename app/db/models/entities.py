@@ -122,6 +122,8 @@ class Appointment(TimestampMixin, Base):
     cancellation_reason: Mapped[str | None] = mapped_column(String(255))
     notes: Mapped[str | None] = mapped_column(Text)
     concern: Mapped[str | None] = mapped_column(Text)
+    payment_status: Mapped[str] = mapped_column(String(20), default="PAID", nullable=False)
+    payment_amount: Mapped[float] = mapped_column(default=500.0, nullable=False)
 
     provider: Mapped[ProviderProfile] = relationship(back_populates="appointments")
 
