@@ -12,6 +12,52 @@ class AppointmentSlot:
     end_datetime: datetime
 
 
+@dataclass(frozen=True)
+class SlotAvailability:
+    start_datetime: datetime
+    end_datetime: datetime
+    status: str
+
+
+def generate_slot_availability(
+    target_date: date,
+    schedules: Iterable[ProviderSchedule],
+    blocked_periods: Iterable[BlockedPeriod],
+    appointments: Iterable[Appointment],
+    *,
+    now: datetime | None = None,
+    default_duration_minutes: int = 30,
+) -> list[SlotAvailability]:
+    if default_duration_minutes <= 0:
+        raise ValueError("Appointment duration must be positive")
+    duration = timedelta(minutes=default_duration_minutes)
+    weekday = target_date.weekday()
+    blocked_ranges = [(period.start_datetime, period.end_datetime) for period in blocked_periods]
+    booked_ranges = [(appointment.start_datetime, appointment.end_datetime) for appointment in appointments if appointment.status != AppointmentStatus.CANCELLED]
+    current_time = now or datetime.now()
+    if current_time.tzinfo is not None:
+        current_time = current_time.replace(tzinfo=None)
+    slots: list[SlotAvailability] = []
+    for schedule in schedules:
+        if schedule.active is False or schedule.day_of_week != weekday:
+            continue
+        if schedule.end_time <= schedule.start_time:
+            raise ValueError("Schedule end time must be after start time")
+        cursor = datetime.combine(target_date, schedule.start_time)
+        schedule_end = datetime.combine(target_date, schedule.end_time)
+        while cursor + duration <= schedule_end:
+            slot_end = cursor + duration
+            if slot_end > current_time:
+                status = "AVAILABLE"
+                if _overlaps(cursor, slot_end, booked_ranges):
+                    status = "BOOKED"
+                elif _overlaps(cursor, slot_end, blocked_ranges):
+                    status = "BLOCKED"
+                slots.append(SlotAvailability(cursor, slot_end, status))
+            cursor += duration
+    return sorted(slots, key=lambda slot: slot.start_datetime)
+
+
 def generate_available_slots(
     target_date: date,
     schedules: Iterable[ProviderSchedule],

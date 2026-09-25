@@ -17,7 +17,7 @@ from app.schemas.providers import (
     ScheduleResponse,
     SlotResponse,
 )
-from app.services.slot_service import generate_available_slots
+from app.services.slot_service import generate_available_slots, generate_slot_availability
 from app.services.audit_service import record_audit
 
 router = APIRouter(prefix="/providers", tags=["providers"])
@@ -186,6 +186,7 @@ def get_availability(
     provider_id: int,
     db: DbSession,
     target_date: date = Query(..., description="Date for which available slots are requested"),
+    include_unavailable: bool = Query(False, description="Include booked and blocked slots"),
 ) -> AvailabilityResponse:
     profile = _get_provider(db, provider_id)
     schedules = list(db.scalars(select(ProviderSchedule).where(ProviderSchedule.provider_id == profile.id)).all())
@@ -193,15 +194,12 @@ def get_availability(
         db.scalars(select(BlockedPeriod).where(BlockedPeriod.provider_id == profile.id)).all()
     )
     appointments = list(db.scalars(select(Appointment).where(Appointment.provider_id == profile.id)).all())
-    slots = generate_available_slots(
-        target_date,
-        schedules,
-        blocked_periods,
-        appointments,
-        default_duration_minutes=get_settings().appointment_duration_minutes,
-    )
+    if include_unavailable:
+        slots = generate_slot_availability(target_date, schedules, blocked_periods, appointments, default_duration_minutes=get_settings().appointment_duration_minutes)
+    else:
+        slots = generate_available_slots(target_date, schedules, blocked_periods, appointments, default_duration_minutes=get_settings().appointment_duration_minutes)
     return AvailabilityResponse(
         provider_id=provider_id,
         date=target_date,
-        slots=[SlotResponse(start_datetime=slot.start_datetime, end_datetime=slot.end_datetime) for slot in slots],
+        slots=[SlotResponse(start_datetime=slot.start_datetime, end_datetime=slot.end_datetime, status=getattr(slot, "status", "AVAILABLE")) for slot in slots],
     )

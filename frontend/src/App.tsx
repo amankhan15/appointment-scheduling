@@ -15,7 +15,7 @@ type Appointment = {
   payment_status?: string;
   payment_amount?: number;
 };
-type Slot = { start_datetime: string; end_datetime: string };
+type Slot = { start_datetime: string; end_datetime: string; status?: "AVAILABLE" | "BOOKED" | "BLOCKED" };
 type Profile = {
   id: number;
   user_id: number;
@@ -196,6 +196,24 @@ function PaymentModal({
       </section>
     </div>
   );
+}
+
+function RescheduleModal({ appointment, provider, close, complete }: any) {
+  const [date, setDate] = useState(appointment.start_datetime.slice(0, 10));
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [error, setError] = useState("");
+  async function loadSlots(nextDate: string) {
+    setDate(nextDate);
+    setError("");
+    try {
+      setSlots((await api<{ slots: Slot[] }>(`/providers/${provider.id}/availability?target_date=${nextDate}&include_unavailable=true`)).slots);
+    } catch (requestError) {
+      setSlots([]);
+      setError(requestError instanceof Error ? requestError.message : "Unable to load available slots.");
+    }
+  }
+  useEffect(() => { loadSlots(date); }, []);
+  return <div className="modal-backdrop"><section className="confirm-modal reschedule-modal" role="dialog" aria-modal="true"><p className="eyebrow">Change appointment</p><h2>Reschedule with {provider.name}</h2><label>New date<input type="date" value={date} onChange={(event) => loadSlots(event.target.value)} /></label><div className="reschedule-slots">{slots.map((slot) => <button className={`reschedule-slot ${slot.status?.toLowerCase()}`} disabled={slot.status !== "AVAILABLE"} key={slot.start_datetime} onClick={async () => { await api(`/appointments/${appointment.id}/reschedule`, { method: "POST", body: JSON.stringify({ start_datetime: slot.start_datetime, end_datetime: slot.end_datetime }) }); await complete(); }}>{timeLabel(slot.start_datetime)}<small>{slot.status === "BOOKED" ? "Booked" : slot.status === "BLOCKED" ? "Not available" : "Available"}</small></button>)}{!slots.length && <p className="empty-column">No available slots for this date.</p>}</div>{error && <p className="notice">{error}</p>}<div className="modal-actions"><button className="secondary" onClick={close}>Cancel</button></div></section></div>;
 }
 
 function App() {
@@ -652,6 +670,7 @@ function AppointmentsPage({
   setPaymentRequest,
 }: any) {
   const [doctor, setDoctor] = useState<Provider | null>(null);
+  const [rescheduleAppointment, setRescheduleAppointment] = useState<Appointment | null>(null);
   const [date, setDate] = useState("2026-09-28");
   const [concern, setConcern] = useState("");
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -660,7 +679,7 @@ function AppointmentsPage({
     setSlots(
       (
         await api<{ slots: Slot[] }>(
-          `/providers/${provider.id}/availability?target_date=${date}`,
+          `/providers/${provider.id}/availability?target_date=${date}&include_unavailable=true`,
         )
       ).slots,
     );
@@ -689,6 +708,9 @@ function AppointmentsPage({
       },
     });
   }
+  function cancelAppointment(appointment: Appointment) {
+    setConfirmation({ text: "Cancel this appointment?", action: async () => { await api(`/appointments/${appointment.id}/cancel`, { method: "POST" }); setAppointments(await api<Appointment[]>("/appointments")); setMessage("Appointment cancelled."); } });
+  }
   return (
     <section className="appointments-page page-panel">
       <div className="section-heading">
@@ -706,7 +728,7 @@ function AppointmentsPage({
               setSlots(
                 (
                   await api<{ slots: Slot[] }>(
-                    `/providers/${doctor.id}/availability?target_date=${e.target.value}`,
+                    `/providers/${doctor.id}/availability?target_date=${e.target.value}&include_unavailable=true`,
                   )
                 ).slots,
               );
@@ -742,9 +764,9 @@ function AppointmentsPage({
           <p>Available with {doctor.name}</p>
           <div className="slot-grid">
             {slots.map((slot) => (
-              <button key={slot.start_datetime} onClick={() => book(slot)}>
+              <button className={`appointment-slot ${slot.status?.toLowerCase()}`} disabled={slot.status !== "AVAILABLE"} key={slot.start_datetime} onClick={() => book(slot)}>
                 {timeLabel(slot.start_datetime)}
-                <small>30 min</small>
+                <small>{slot.status === "BOOKED" ? "Booked" : slot.status === "BLOCKED" ? "Not available" : "Available"}</small>
               </button>
             ))}
           </div>
@@ -759,10 +781,12 @@ function AppointmentsPage({
               <strong>{providers.find((p: Provider) => p.id === appointment.provider_id)?.name || "Doctor"}</strong>
               <span>{timeLabel(appointment.start_datetime)} · {appointment.status.toLowerCase()}</span>
               <small>{appointment.concern || "No concern provided"}</small>
+              {appointment.status === "CONFIRMED" && <div className="appointment-actions"><button className="reschedule-action" onClick={() => setRescheduleAppointment(appointment)}>Reschedule</button><button className="cancel-action" onClick={() => cancelAppointment(appointment)}>Cancel</button></div>}
             </div>
           </article>
         )}
       />
+      {rescheduleAppointment && <RescheduleModal appointment={rescheduleAppointment} provider={providers.find((provider: Provider) => provider.id === rescheduleAppointment.provider_id)} close={() => setRescheduleAppointment(null)} complete={async () => { setRescheduleAppointment(null); setAppointments(await api<Appointment[]>("/appointments")); setMessage("Appointment rescheduled."); }} />}
     </section>
   );
 }

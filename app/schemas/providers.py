@@ -54,6 +54,7 @@ class BlockedPeriodResponse(BlockedPeriodRequest):
 class SlotResponse(BaseModel):
     start_datetime: datetime
     end_datetime: datetime
+    status: str = "AVAILABLE"
 
 
 class AvailabilityResponse(BaseModel):

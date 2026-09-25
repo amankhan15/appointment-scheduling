@@ -178,6 +178,37 @@ html body .app-shell .dashboard .appointment-list article button.cancel-action {
   font-size: 12px;
   padding: 18px 0;
 }
+.appointment-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.reschedule-action {
+  border: 1px solid var(--green);
+  background: #f3f8e9;
+  color: var(--green);
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.reschedule-action:hover {
+  background: var(--lime);
+}
+.reschedule-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 18px;
+}
+.reschedule-slot {
+  border: 1px solid var(--green);
+  background: var(--green);
+  color: #fff;
+  padding: 10px 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
 .auth-shell {
   min-height: 100vh;
   display: grid;
@@ -561,6 +592,25 @@ input:focus {
 .slot-grid button:hover {
   background: var(--green);
   color: #fff;
+}
+.slot-grid button.booked,
+.slot-grid button.blocked,
+.reschedule-slot.booked,
+.reschedule-slot.blocked {
+  border-color: #d8b3a7;
+  background: #fff3ee;
+  color: var(--rust);
+  cursor: not-allowed;
+}
+.slot-grid button:disabled:hover {
+  background: #fff3ee;
+  color: var(--rust);
+}
+.reschedule-slot small,
+.appointment-slot small {
+  display: block;
+  font: 10px "DM Mono";
+  margin-top: 3px;
 }
 .slot-grid small {
   display: block;
